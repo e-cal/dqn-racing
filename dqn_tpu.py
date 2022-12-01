@@ -247,7 +247,7 @@ with strategy.scope():
     q_value = DQN()
     q_value.model.summary()
 
-model.compile(loss="mse")
+q_value.model.compile(loss="mse")
 
 z = strategy.run(train, args=(env, q_value, epsilon, checkpoint))
 print(z)
