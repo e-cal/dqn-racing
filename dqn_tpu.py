@@ -248,6 +248,10 @@ with strategy.scope():
     q_value.model.summary()
 
 
-z = strategy.run(train, args=(env, q_value, epsilon, checkpoint))
+e = tf.constant(env)
+q = tf.constant(q_value)
+e = tf.constant(epsilon)
+c = tf.constant(checkpoint)
+z = strategy.run(train, args=(e, q, e, c))
 print(z)
 
