@@ -145,6 +145,7 @@ def get_episode(environ, q_value, epsilon):
 
 
 # %%
+@tf.function
 def train(environ, q_value, epsilon, checkpoint=0):
     gamma = 0.99
 
@@ -248,4 +249,5 @@ with strategy.scope():
 
 
 z = strategy.run(train, args=(env, q_value, epsilon, checkpoint))
+print(z)
 
