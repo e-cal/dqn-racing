@@ -13,10 +13,10 @@ from tensorflow.keras import layers, models, regularizers
 MODEL_NAME = "dqn0"
 
 # %%
-class ApplySoftMaxWeight(layers.Layer):
+class SoftMax(layers.Layer):
     def __init__(self, **kwargs):
         self.filter_shape = None
-        super(ApplySoftMaxWeight, self).__init__(**kwargs)
+        super(SoftMax, self).__init__(**kwargs)
 
     def build(self, input_shape):
         self.kernel = self.add_weight(name="weights", shape=[input_shape[3]])
@@ -31,7 +31,7 @@ class ApplySoftMaxWeight(layers.Layer):
 
 
 # Base model
-class QValue:
+class DQN:
     def __init__(self):
         self.model = self.build_model()
 
@@ -45,7 +45,7 @@ class QValue:
             16, (5, 5), padding="same", use_bias=True, activation="relu", name="cnn2"
         )(pool1)
         pool2 = layers.MaxPooling2D((2, 2), name="pool2")(cnn2)
-        weighted_filters = ApplySoftMaxWeight(name="weighted_filters")(pool2)
+        weighted_filters = SoftMax(name="weighted_filters")(pool2)
 
         cnn_flatten = layers.Flatten(name="flatten")(weighted_filters)
         action_input = layers.Input(shape=(5,), name="action_input")
@@ -74,7 +74,7 @@ class QValue:
 
 
 # %%
-q_value = QValue()
+q_value = DQN()
 q_value.model.summary()
 
 # %%
@@ -220,7 +220,7 @@ def train(environ, q_value, epsilon, checkpoint=0):
 
 # %%
 env = gym.make("CarRacing-v2", continuous=False, render_mode="rgb_array")
-q_value = QValue()
+q_value = DQN()
 q_value.model.summary()
 
 
