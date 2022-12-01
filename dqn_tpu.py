@@ -219,9 +219,7 @@ def train(environ, q_value, epsilon, checkpoint=0):
 
 
 # %%
-env = gym.make("CarRacing-v2", continuous=False, render_mode="rgb_array")
-q_value = DQN()
-q_value.model.summary()
+
 
 
 # %%
@@ -232,5 +230,14 @@ strategy = tf.distribute.TPUStrategy(cluster_resolver)
 checkpoint = 0
 epsilon= 0.2
 
+
+
+
+with strategy.scope():
+    env = gym.make("CarRacing-v2", continuous=False, render_mode="rgb_array")
+    q_value = DQN()
+    q_value.model.summary()
+
+
 z = strategy.run(train, args=(env, q_value, epsilon, checkpoint))
-print(z)
+
