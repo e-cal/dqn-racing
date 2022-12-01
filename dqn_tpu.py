@@ -223,14 +223,16 @@ def train(environ, q_value, epsilon, checkpoint=0):
 
 
 # %%
-cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver()
-tf.config.experimental_connect_to_cluster(cluster_resolver)
-tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
-strategy = tf.distribute.TPUStrategy(cluster_resolver)
+resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu='')
+tf.config.experimental_connect_to_cluster(resolver)
+tf.tpu.experimental.initialize_tpu_system(resolver)
+print("All devices: ", tf.config.list_logical_devices('TPU'))
+
 checkpoint = 0
 epsilon= 0.2
 
 
+# This is the TPU initialization code that has to be at the beginning.
 
 
 with strategy.scope():
