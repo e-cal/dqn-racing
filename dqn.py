@@ -7,10 +7,8 @@ import gym
 import keras.backend as K
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import layers, models, regularizers
+from keras import layers, models, regularizers
 
-# %%
-MODEL_NAME = "dqn0"
 
 # %%
 class SoftMax(layers.Layer):
@@ -26,7 +24,7 @@ class SoftMax(layers.Layer):
         config = super().get_config()
         return config
 
-    def call(self, inputs, **kwargs):
+    def call(self, inputs):
         return inputs * tf.nn.softmax(self.kernel)
 
 
@@ -74,14 +72,14 @@ class DQN:
 
 
 # %%
-q_value = DQN()
-q_value.model.summary()
+dqn = DQN()
+dqn.model.summary()
 
 # %%
 def join_frames(o0, o1, o2):
-    gray_image0 = cv2.cvtColor(cv2.resize(o0, (48, 48)), cv2.COLOR_RGB2GRAY)
-    gray_image1 = cv2.cvtColor(cv2.resize(o1, (48, 48)), cv2.COLOR_RGB2GRAY)
-    gray_image2 = cv2.cvtColor(cv2.resize(o2, (48, 48)), cv2.COLOR_RGB2GRAY)
+    gray_image0 = cv2.cvtColor(cv2.resize(o0, (48, 48)), cv2.COLOR_RGB2GRAY)  # type: ignore
+    gray_image1 = cv2.cvtColor(cv2.resize(o1, (48, 48)), cv2.COLOR_RGB2GRAY)  # type: ignore
+    gray_image2 = cv2.cvtColor(cv2.resize(o2, (48, 48)), cv2.COLOR_RGB2GRAY)  # type: ignore
 
     return np.array(
         [gray_image0.transpose(), gray_image1.transpose(), gray_image2.transpose()]
@@ -89,86 +87,80 @@ def join_frames(o0, o1, o2):
 
 
 # %%
-def get_episode(environ, q_value, epsilon):
+def run_episode(env: gym.Env, dqn: DQN, epsilon):
     episode = []
-    o0, _ = environ.reset()
+    o0, _ = env.reset()
     o1 = copy.deepcopy(o0)
     o2 = copy.deepcopy(o0)
-    total_r = 0
+    reward = 0
 
-    if epsilon > 0:
-        keep_count = 3
-    else:
-        keep_count = 1
+    act_interval = 3
 
-    c = 0
-    while True:
-        if c % keep_count == 0:  # Get new action
+    step = 0
+    a = np.random.randint(5)
+
+    done = False
+    while not done:
+        if step % act_interval == 0:
             if np.random.random() < epsilon:
                 a = np.random.randint(5)
             else:
-                a, _ = q_value.get_action(join_frames(o0, o1, o2))
-        c += 1
-        # observation, reward, terminated, truncated, info
-        o_new, r, done, trunc, inf = environ.step(a)
-        total_r += r
+                a, _ = dqn.get_action(join_frames(o0, o1, o2))
 
-        # Terminate episode when total reward becomes negative
-        if total_r < 0:
-            done = 1
+        step += 1
 
-        if done:
-            # Terminal state is to achive more than 990 or get out of the field.
-            if total_r > 990 or r < -99:
-                episode.append((join_frames(o0, o1, o2), a, r, None))
+        o3, r, done, _, _ = env.step(a)
+        reward += r
+
+        # stop if reward negative
+        if reward < 0:
+            done = True
+
+        if done and (reward > 990 or r < -99):  # if terminal state reached
+            episode.append((join_frames(o0, o1, o2), a, r, None))
             break
-        else:
-            episode.append((join_frames(o0, o1, o2), a, r, join_frames(o1, o2, o_new)))
-        o0, o1, o2 = o1, o2, o_new
 
-    print(
-        "epsilon={}, episode length={}, total rewards={}".format(
-            epsilon, len(episode), total_r
-        )
-    )
-    return episode, total_r
+        episode.append((join_frames(o0, o1, o2), a, r, join_frames(o1, o2, o3)))
+        o0, o1, o2 = o1, o2, o3
+
+    print(f"[completed episode] steps={len(episode)}, reward={reward}")
+    return episode, reward
 
 
 # %%
-def train(environ, q_value, epsilon, checkpoint=0):
-    gamma = 0.99
-
+def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
     if checkpoint > 0:
-        filename = "car-racing-v2-{}-{}.hd5".format(checkpoint, MODEL_NAME)
-        print("load model {}".format(filename))
-        q_value.model = models.load_model(filename)
+        filename = f"dqn-{checkpoint}.hd5"
+        print(f"loaded model {filename}")
+        dqn.model = models.load_model(filename)  # type: ignore
 
     experience = []
     good_experience = []
     best_r = [-100, -100, -100]
 
-    for n in range(checkpoint + 1, checkpoint + 1000):
-        print("iteration {}".format(n))
+    for ep in range(checkpoint + 1, checkpoint + 1000):
+        print("iteration {}".format(ep))
 
         total_len = 0
-        if n % 3 == 0:
-            print("Testing the current performance...")
-            episode, total_r = get_episode(environ, q_value, epsilon=0)
+        if ep % 3 == 0:
+            print("=" * 80)
+            print(f"[episode {ep}] saving model...")
+            episode, reward = run_episode(env, dqn, epsilon=0)
             with open("result.txt", "a") as f:
-                f.write("{},{},{},{}\n".format(n, epsilon, len(episode), total_r))
-            filename = "car-racing-v2-{}-{}.hd5".format(n, MODEL_NAME)
-            q_value.model.save(filename, save_format="h5")
+                f.write(f"[ep {ep}] length: {len(episode)}, reward: {reward}")
+            filename = f"dqn-{ep}.hd5"
+            dqn.model.save(filename, save_format="h5")  # type: ignore
             experience += episode
             total_len += len(episode)
 
         while total_len < 500:
-            episode, total_r = get_episode(environ, q_value, epsilon)
+            episode, reward = run_episode(env, dqn, epsilon)
             total_len += len(episode)
             experience += episode
 
             # Keep the top 3 episodes
-            if total_r > min(best_r):
-                best_r = best_r[1:] + [total_r]
+            if reward > min(best_r):
+                best_r = best_r[1:] + [reward]
                 good_experience += episode
                 if len(good_experience) > 999 * 3:
                     good_experience = good_experience[-999 * 3 :]
@@ -205,10 +197,10 @@ def train(environ, q_value, epsilon, checkpoint=0):
             if state_new is None:  # Terminal state
                 q_new = 0
             else:
-                _, q_new = q_value.get_action(state_new)
+                _, q_new = dqn.get_action(state_new)
             labels.append(np.array(r + gamma * q_new))
 
-        hist = q_value.model.fit(
+        hist = dqn.model.fit(
             [np.array(states), np.array(actions)],
             np.array(labels),
             batch_size=50,
@@ -220,9 +212,9 @@ def train(environ, q_value, epsilon, checkpoint=0):
 
 # %%
 env = gym.make("CarRacing-v2", continuous=False, render_mode="rgb_array")
-q_value = DQN()
-q_value.model.summary()
+dqn = DQN()
+dqn.model.summary()
 
 
 # %%
-train(env, q_value, epsilon=0.2, checkpoint=0)
+train(env, dqn, epsilon=0.2, checkpoint=0)
