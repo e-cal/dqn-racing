@@ -66,7 +66,7 @@ class DQN:
         q_value = layers.Dense(1, name="output")(hidden3)
 
         model = models.Model(inputs=[cnn_input, action_input], outputs=q_value)
-        model.compile(loss="mse")
+        
         return model
 
     def get_action(self, state):
@@ -247,11 +247,8 @@ with strategy.scope():
     q_value = DQN()
     q_value.model.summary()
 
+model.compile(loss="mse")
 
-e = tf.constant(env)
-q = tf.constant(q_value)
-e = tf.constant(epsilon)
-c = tf.constant(checkpoint)
-z = strategy.run(train, args=(e, q, e, c))
+z = strategy.run(train, args=(env, q_value, epsilon, checkpoint))
 print(z)
 
