@@ -12,7 +12,7 @@ from tensorflow.keras import layers, models, regularizers
 # %%
 MODEL_NAME = "dqn0"
 
-resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu='dqn')
+resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu='')
 tf.config.experimental_connect_to_cluster(resolver)
 # This is the TPU initialization code that has to be at the beginning.
 tf.tpu.experimental.initialize_tpu_system(resolver)
