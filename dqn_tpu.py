@@ -86,8 +86,10 @@ class DQN:
             action_onehot[a] = 1
             actions.append(action_onehot)
 
+        print('hello?')
         print(states)
         print(actions)
+        print([np.array(states), np.array(actions)].shape)
         input()
 
         q_values = strategy.run(
