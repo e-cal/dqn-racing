@@ -1,13 +1,24 @@
 # %%
 import copy
+import os
 import random
+import sys
 
 import cv2
 import gym
-import keras.backend as K
 import numpy as np
 import tensorflow as tf
-from keras import layers, models, regularizers
+from keras import layers, models
+
+stdout = sys.stdout
+
+
+def mute():
+    sys.stdout = open(os.devnull, "w")
+
+
+def unmute():
+    sys.stdout = stdout
 
 
 # %%
@@ -28,7 +39,6 @@ class SoftMax(layers.Layer):
         return inputs * tf.nn.softmax(self.kernel)
 
 
-# Base model
 class DQN:
     def __init__(self):
         self.model = self.build_model()
@@ -99,6 +109,8 @@ def run_episode(env: gym.Env, dqn: DQN, epsilon):
     step = 0
     a = np.random.randint(5)
 
+    mute()
+
     done = False
     while not done:
         if step % act_interval == 0:
@@ -110,6 +122,7 @@ def run_episode(env: gym.Env, dqn: DQN, epsilon):
         step += 1
 
         o3, r, done, _, _ = env.step(a)
+
         reward += r
 
         # stop if reward negative
@@ -123,7 +136,7 @@ def run_episode(env: gym.Env, dqn: DQN, epsilon):
         episode.append((join_frames(o0, o1, o2), a, r, join_frames(o1, o2, o3)))
         o0, o1, o2 = o1, o2, o3
 
-    print(f"[completed episode] steps={len(episode)}, reward={reward}")
+    unmute()
     return episode, reward
 
 
@@ -135,57 +148,65 @@ def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
         dqn.model = models.load_model(filename)  # type: ignore
 
     experience = []
-    good_experience = []
+    best_episodes = []
     best_r = [-100, -100, -100]
 
     for ep in range(checkpoint + 1, checkpoint + 1000):
-        print("iteration {}".format(ep))
+        print()
+        print("=" * 80)
+        print(f"Iteration {ep}")
+        print("=" * 80)
 
-        total_len = 0
+        total_steps = 0
         if ep % 3 == 0:
             print("=" * 80)
-            print(f"[episode {ep}] saving model...")
+            print(f"Saving model...")
             episode, reward = run_episode(env, dqn, epsilon=0)
             with open("result.txt", "a") as f:
                 f.write(f"[ep {ep}] length: {len(episode)}, reward: {reward}")
             filename = f"dqn-{ep}.hd5"
             dqn.model.save(filename, save_format="h5")  # type: ignore
             experience += episode
-            total_len += len(episode)
+            total_steps += len(episode)
 
-        while total_len < 500:
+        print("\nGenerating experience...")
+        while total_steps < 500:
             episode, reward = run_episode(env, dqn, epsilon)
-            total_len += len(episode)
+            print(
+                f"[{total_steps}/500 steps] episode steps: {len(episode)} | reward: {reward}"
+            )
+            total_steps += len(episode)
             experience += episode
 
-            # Keep the top 3 episodes
+            # keep the top 3 episodes
             if reward > min(best_r):
                 best_r = best_r[1:] + [reward]
-                good_experience += episode
-                if len(good_experience) > 999 * 3:
-                    good_experience = good_experience[-999 * 3 :]
+                best_episodes += episode
+                if len(best_episodes) > 999 * 3:
+                    best_episodes = best_episodes[-999 * 3 :]
 
         if len(experience) > 999 * 5:  # remember last 5 episodes
             experience = experience[-999 * 5 :]
 
         epsilon = (epsilon - 0.2) * 0.99 + 0.2
 
-        print("Training the model...")
-        # Use latest episode + past episodes (sampling) + top 3 episode (sampling)
-        latest_experience = experience[-total_len:]
-        past_experience = experience[:-total_len]
+        print("\nFitting model...")
+
+        # Use latest episode + sample of past episodes + sample of top best episodes
+        latest_experience = experience[-total_steps:]
+        past_experience = experience[:-total_steps]
         examples = (
             latest_experience
             + random.sample(past_experience, min(len(past_experience), 999))
-            + random.sample(good_experience, min(len(good_experience), 999))
+            + random.sample(best_episodes, min(len(best_episodes), 999))
         )
-
-        # Show some statistics
-        print("experience length={}".format(len(experience)))
-        print("number of examples={}".format(len(examples)))
-        print("best total reward = ", best_r)
         np.random.shuffle(examples)
 
+        # Show some statistics
+        print(f"training examples: {len(examples)}")
+        print(f"best reward: {best_r}")
+
+        mute()
         states, actions, labels = [], [], []
         for state, a, r, state_new in examples:
             states.append(np.array(state))
@@ -199,22 +220,23 @@ def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
             else:
                 _, q_new = dqn.get_action(state_new)
             labels.append(np.array(r + gamma * q_new))
+        unmute()
 
-        hist = dqn.model.fit(
+        hist = dqn.model.fit(  # type: ignore
             [np.array(states), np.array(actions)],
             np.array(labels),
             batch_size=50,
             epochs=10,
-            verbose=0,
+            verbose=2,  # type: ignore
         )
-        print("loss = {}".format(hist.history["loss"]))
+
+        print(f"loss: {hist.history['loss']}")
 
 
 # %%
 env = gym.make("CarRacing-v2", continuous=False, render_mode="rgb_array")
 dqn = DQN()
-dqn.model.summary()
-
+# dqn.model.summary()
 
 # %%
 train(env, dqn, epsilon=0.2, checkpoint=0)
