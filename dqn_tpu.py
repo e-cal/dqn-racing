@@ -88,7 +88,7 @@ class DQN:
 
         q_values = strategy.run(
             self.model.predict,
-            args=(([(tf.convert_to_tensor(states, dtype='uint8)')), ((tf.convert_to_tensor(actions, dtype='uint8)')))])),
+            args=(([(tf.convert_to_tensor(states, dtype='uint8')), ((tf.convert_to_tensor(actions, dtype='uint8')))])),
         )
 
         #q_values = self.model.predict([np.array(states), np.array(actions)])
