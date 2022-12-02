@@ -81,7 +81,7 @@ class DQN:
         states = []
         actions = []
         for a in range(5):
-            states.append(state)
+            states.append(np.array(state))
             action_onehot = np.zeros(5)
             action_onehot[a] = 1
             actions.append(action_onehot)
