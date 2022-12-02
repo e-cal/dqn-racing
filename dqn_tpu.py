@@ -81,14 +81,14 @@ class DQN:
         states = []
         actions = []
         for a in range(5):
-            states.append(np.array(state))
+            states.append(tf.convert_to_tensor(np.array(state)))
             action_onehot = np.zeros(5)
             action_onehot[a] = 1
-            actions.append(action_onehot)
+            actions.append(tf.convert_to_tensor(action_onehot))
 
         q_values = strategy.run(
             self.model.predict,
-            args=([np.array(states), np.array(actions)]),
+            args=(tf.convert_to_tensor([np.array(states), np.array(actions)])),
         )
 
         #q_values = self.model.predict([np.array(states), np.array(actions)])
