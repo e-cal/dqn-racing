@@ -219,6 +219,7 @@ def train(environ, q_value, epsilon, checkpoint=0):
                 _, q_new = q_value.get_action(state_new)
             labels.append(np.array(r + gamma * q_new))
 
+        '''
         hist = q_value.model.fit(
             [np.array(states), np.array(actions)],
             np.array(labels),
@@ -226,6 +227,11 @@ def train(environ, q_value, epsilon, checkpoint=0):
             epochs=10,
             verbose=0,
         )
+        '''
+
+        hist = strategy.run(q_value.model.fit, args=([np.array(states), np.array(actions)], np.array(labels), 50, 10,0))
+
+
         print("loss = {}".format(hist.history["loss"]))
 
 
@@ -246,9 +252,10 @@ with strategy.scope():
     env = gym.make("CarRacing-v2", continuous=False, render_mode="rgb_array")
     q_value = DQN()
     q_value.model.summary()
+    q_value.model.compile(loss="mse")
 
-q_value.model.compile(loss="mse")
+q_value.mode.train(env, q_value, epsilon, checkpoint)
 
-z = strategy.run(train, args=(env, q_value, epsilon, checkpoint))
-print(z)
+
+
 
