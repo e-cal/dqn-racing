@@ -150,6 +150,7 @@ def run_episode(env: gym.Env, dqn: DQN, epsilon):
 
 
 # %%
+@tf.function
 def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
     if checkpoint > 0:
         filename = f"dqn-{checkpoint}.hd5"
@@ -259,4 +260,5 @@ with strategy.scope():
     dqn.model.compile(loss="mse")
 
 print("hey is this sh1t working?")
-dqn.model.train(env, dqn, epsilon, checkpoint)
+
+train(env, dqn, epsilon, checkpoint)
