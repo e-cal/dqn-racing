@@ -259,4 +259,4 @@ with strategy.scope():
     dqn.model.compile(loss="mse")
 
 print("hey is this sh1t working?")
-dqn.mode.train(env, dqn, epsilon, checkpoint)
+dqn.model.train(env, dqn, epsilon, checkpoint)
