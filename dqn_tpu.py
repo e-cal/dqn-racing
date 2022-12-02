@@ -73,9 +73,10 @@ class DQN:
         q_value = layers.Dense(1, name="output")(hidden3)
 
         model = models.Model(inputs=[cnn_input, action_input], outputs=q_value)
-        model.compile(loss="mse")
+        #model.compile(loss="mse")
         return model
 
+    @tf.function()
     def get_action(self, state):
         states = []
         actions = []
