@@ -230,8 +230,6 @@ def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
             verbose=2,  # type: ignore
         )
 
-        print(f"\nloss: {hist.history['loss']}")
-
 
 # %%
 env = gym.make("CarRacing-v2", continuous=False, render_mode="rgb_array")
