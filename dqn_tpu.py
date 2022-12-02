@@ -86,6 +86,10 @@ class DQN:
             action_onehot[a] = 1
             actions.append(action_onehot)
 
+        print(states)
+        print(actions)
+        input()
+
         q_values = strategy.run(
             self.model.predict,
             args=(tf.convert_to_tensor([states, actions])),
