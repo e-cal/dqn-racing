@@ -215,7 +215,7 @@ def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
         print(f"training examples: {len(examples)}")
         print(f"best reward: {best_r}\n")
 
-        mute()
+        #mute()
         states, actions, labels = [], [], []
         for state, a, r, state_new in examples:
             states.append(np.array(state))
@@ -229,7 +229,7 @@ def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
             else:
                 _, q_new = dqn.get_action(state_new)
             labels.append(np.array(r + gamma * q_new))
-        unmute()
+        #unmute()
 
         """
         hist = dqn.model.fit(  # type: ignore
@@ -240,7 +240,7 @@ def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
             verbose=2,  # type: ignore
         )
         """
-
+        print('actually fitting model')
         hist = strategy.run(
             dqn.model.fit,
             args=([np.array(states), np.array(actions)], np.array(labels), 50, 10, 0),
