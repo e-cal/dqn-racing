@@ -85,7 +85,12 @@ class DQN:
             action_onehot[a] = 1
             actions.append(action_onehot)
 
-        q_values = self.model.predict([np.array(states), np.array(actions)])
+        q_values = strategy.run(
+            self.model.predict,
+            args=([np.array(states), np.array(actions)]),
+        )
+
+        #q_values = self.model.predict([np.array(states), np.array(actions)])
         optimal_action = np.argmax(q_values)
         return optimal_action, q_values[optimal_action][0]
 
@@ -217,6 +222,7 @@ def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
 
         #mute()
         states, actions, labels = [], [], []
+
         for state, a, r, state_new in examples:
             states.append(np.array(state))
 
@@ -227,7 +233,7 @@ def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
             if state_new is None:  # Terminal state
                 q_new = 0
             else:
-                _, q_new = dqn.get_action(state_new)
+                 _, q_new = dqn.get_action(state_new)
             labels.append(np.array(r + gamma * q_new))
         #unmute()
 
