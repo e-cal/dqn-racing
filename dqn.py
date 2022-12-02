@@ -204,7 +204,7 @@ def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
 
         # Show some statistics
         print(f"training examples: {len(examples)}")
-        print(f"best reward: {best_r}")
+        print(f"best reward: {best_r}\n")
 
         mute()
         states, actions, labels = [], [], []
@@ -230,7 +230,7 @@ def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
             verbose=2,  # type: ignore
         )
 
-        print(f"loss: {hist.history['loss']}")
+        print(f"\nloss: {hist.history['loss']}")
 
 
 # %%
