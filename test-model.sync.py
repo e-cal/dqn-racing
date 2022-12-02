@@ -1,3 +1,4 @@
+# %%
 import copy
 import datetime
 import os
@@ -16,7 +17,7 @@ from tensorflow.python.framework.ops import disable_eager_execution
 
 disable_eager_execution()
 
-
+# %%
 class ApplySoftMaxWeight(layers.Layer):
     def __init__(self, **kwargs):
         self.filter_shape = None
@@ -54,6 +55,7 @@ class QValue:
         return optimal_action, q_values[optimal_action][0]
 
 
+# %%
 def join_frames(o0, o1, o2):
     gray_image0 = cv2.cvtColor(cv2.resize(o0, (48, 48)), cv2.COLOR_RGB2GRAY)
     gray_image1 = cv2.cvtColor(cv2.resize(o1, (48, 48)), cv2.COLOR_RGB2GRAY)
@@ -64,6 +66,7 @@ def join_frames(o0, o1, o2):
     ).transpose()
 
 
+# %%
 def get_weighted_filters(q_value, target_image, draw=True):
     o0, o1, o2 = target_image
     target_image = join_frames(o0, o1, o2)
@@ -117,6 +120,7 @@ def get_weighted_filters(q_value, target_image, draw=True):
         return weighted_layer_output_val
 
 
+# %%
 def get_heatmap(q_value, target_image):
     weighted_layer_output_val = get_weighted_filters(q_value, target_image, draw=False)
     original = target_image[-1]
@@ -141,6 +145,7 @@ def get_heatmap(q_value, target_image):
     return original, heatmap, superimposed_img
 
 
+# %%
 def create_gif(q_value, epsilon=0):
     env = gym.make("CarRacing-v2", continuous=False, render_mode="rgb_array")
     o0, _ = env.reset()
@@ -185,6 +190,7 @@ def create_gif(q_value, epsilon=0):
     return frames, raw_frames, total_r
 
 
+# %%
 def create_overlay_gif(q_value, frames, raw_frames, total_r):
     frames_overlay = []
     c = 0
@@ -211,6 +217,7 @@ def create_overlay_gif(q_value, frames, raw_frames, total_r):
     )
 
 
+# %%
 def show_frames(q_value, target_images):
     num = len(target_images)
     fig = plt.figure(figsize=(11, num * 3))
@@ -242,7 +249,8 @@ def show_frames(q_value, target_images):
         c += 1
 
 
-def load_model(q_value, checkpoint, model="dqn0"):
+# %%
+def load_model(q_value, checkpoint, model="model01"):
     filename = "car-racing-v2-{}-{}.hd5".format(checkpoint, model)
     print("load model {}".format(filename))
 
@@ -253,13 +261,19 @@ def load_model(q_value, checkpoint, model="dqn0"):
     q_value.checkpoint = checkpoint
 
 
+# %%
 q_value = QValue()
-load_model(q_value, 6, "dqn0")
+load_model(q_value, 18, "dqn0")
 
+# %%
 frames, raw_frames, total_r = create_gif(q_value)
 
+# %%
 get_weighted_filters(q_value, raw_frames[20])
 
+# %%
 show_frames(q_value, raw_frames[50:300:20])
 
+# %%
+# %%time
 create_overlay_gif(q_value, frames, raw_frames, total_r)
