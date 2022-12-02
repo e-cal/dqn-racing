@@ -85,11 +85,11 @@ class DQN:
             action_onehot[a] = 1
             actions.append(action_onehot)
 
-
-        q_values = strategy.run(
-            self.model.predict,
-            args=([states, actions]),
-        )
+        with strategy.scope():
+            q_values = strategy.run(
+                self.model.predict,
+                args=([states, actions]),
+            )
 
         #q_values = self.model.predict([np.array(states), np.array(actions)])
         optimal_action = np.argmax(q_values)
