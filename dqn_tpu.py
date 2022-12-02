@@ -254,6 +254,7 @@ with strategy.scope():
     q_value.model.summary()
     q_value.model.compile(loss="mse")
 
+print('hey is this sh1t working?')
 q_value.mode.train(env, q_value, epsilon, checkpoint)
 
 
