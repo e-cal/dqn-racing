@@ -150,7 +150,6 @@ def run_episode(env: gym.Env, dqn: DQN, epsilon):
 
 
 # %%
-@tf.function
 def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
     if checkpoint > 0:
         filename = f"dqn-{checkpoint}.hd5"
