@@ -10,6 +10,9 @@ import numpy as np
 import tensorflow as tf
 from keras import layers, models
 
+if len(tf.config.list_physical_devices("GPU")) > 0:
+    print("Using GPU")
+
 stdout = sys.stdout
 
 
@@ -97,98 +100,121 @@ def join_frames(o0, o1, o2):
 
 
 # %%
-def run_episode(env: gym.Env, dqn: DQN, epsilon):
-    episode = []
-    o0, _ = env.reset()
-    o1 = copy.deepcopy(o0)
-    o2 = copy.deepcopy(o0)
-    reward = 0
+def run_episode(env: gym.Env, dqn: DQN, epsilon: float):
+    """Reset the environment and run through an episode using the DQN."""
 
-    act_interval = 3
+    episode = []
+
+    # initialization observations
+    ob0, _ = env.reset()
+    ob1 = copy.deepcopy(ob0)
+    ob2 = copy.deepcopy(ob0)
+    reward = 0
 
     step = 0
     a = np.random.randint(5)
 
-    mute()
+    act_interval = 3
 
+    mute()
     done = False
     while not done:
+
+        # change action every few steps (prevent rapid switching)
         if step % act_interval == 0:
+
+            # epsilon greedy action
             if np.random.random() < epsilon:
                 a = np.random.randint(5)
             else:
-                a, _ = dqn.get_action(join_frames(o0, o1, o2))
+                a, _ = dqn.get_action(join_frames(ob0, ob1, ob2))
 
+        ob3, r, done, _, _ = env.step(a)
         step += 1
-
-        o3, r, done, _, _ = env.step(a)
-
         reward += r
 
-        # stop if reward negative
+        # if terminal state reached
+        if done:
+            episode.append((join_frames(ob0, ob1, ob2), a, r, None))
+            break
+
+        # stop if reward negative [maybe move up?]
         if reward < 0:
             done = True
 
-        if done and (reward > 990 or r < -99):  # if terminal state reached
-            episode.append((join_frames(o0, o1, o2), a, r, None))
-            break
-
-        episode.append((join_frames(o0, o1, o2), a, r, join_frames(o1, o2, o3)))
-        o0, o1, o2 = o1, o2, o3
+        episode.append((join_frames(ob0, ob1, ob2), a, r, join_frames(ob1, ob2, ob3)))
+        ob0, ob1, ob2 = ob1, ob2, ob3
 
     unmute()
     return episode, reward
 
 
 # %%
-def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
-    if checkpoint > 0:
-        filename = f"dqn-{checkpoint}.hd5"
-        print(f"loaded model {filename}")
-        dqn.model = models.load_model(filename)  # type: ignore
+def train(
+    env: gym.Env,
+    dqn: DQN,
+    epsilon: float,
+    gamma=0.99,
+    ep_decay=0.99,
+    min_ep=0.01,
+    iter_len=500,
+    loadcp=0,
+    save_interval=5,
+):
+
+    if loadcp > 0:  # load partially trained model
+        fp = f"dqn-{loadcp}.hd5"
+        print(f"loaded model {fp}")
+        dqn.model = models.load_model(fp)  # type: ignore
 
     experience = []
     best_episodes = []
     best_r = [-100, -100, -100]
 
-    for ep in range(checkpoint + 1, checkpoint + 1000):
+    for i in range(loadcp + 1, loadcp + 1000):
         print()
         print("=" * 80)
-        print(f"Iteration {ep}")
+        print(f"Iteration {i}")
         print("=" * 80)
 
         total_steps = 0
-        if ep % 3 == 0:
-            print("=" * 80)
+
+        # save model every few training iterations
+        if i % save_interval == 0:
             print(f"Saving model...")
+
             episode, reward = run_episode(env, dqn, epsilon=0)
-            with open("result.txt", "a") as f:
-                f.write(f"[ep {ep}] length: {len(episode)}, reward: {reward}")
-            filename = f"dqn-{ep}.hd5"
-            dqn.model.save(filename, save_format="h5")  # type: ignore
+
+            with open("training-history.txt", "a") as f:
+                f.write(f"[ep {i}] length: {len(episode)}, reward: {reward}")
+
+            fp = f"dqn-{i}.hd5"
+            dqn.model.save(fp, save_format="h5")  # type: ignore
             experience += episode
             total_steps += len(episode)
 
         print("\nGenerating experience...")
-        while total_steps < 500:
+        while total_steps < iter_len:  # gather `iter_len` steps of experience
             episode, reward = run_episode(env, dqn, epsilon)
+            total_steps += len(episode)
+            experience += episode
             print(
                 f"[{total_steps}/500 steps] episode steps: {len(episode)} | reward: {reward}"
             )
-            total_steps += len(episode)
-            experience += episode
 
-            # keep the top 3 episodes
+            # keep the best 3 episodes
             if reward > min(best_r):
                 best_r = best_r[1:] + [reward]
                 best_episodes += episode
                 if len(best_episodes) > 999 * 3:
                     best_episodes = best_episodes[-999 * 3 :]
 
-        if len(experience) > 999 * 5:  # remember last 5 episodes
+        # keep the last 5 episodes
+        if len(experience) > 999 * 5:
             experience = experience[-999 * 5 :]
 
-        epsilon = (epsilon - 0.2) * 0.99 + 0.2
+        # decay epsilon
+        epsilon = max(epsilon * ep_decay, min_ep)
 
         print("\nFitting model...")
 
@@ -202,29 +228,31 @@ def train(env: gym.Env, dqn: DQN, epsilon: float, gamma=0.99, checkpoint=0):
         )
         np.random.shuffle(examples)
 
-        # Show some statistics
         print(f"training examples: {len(examples)}")
-        print(f"best reward: {best_r}\n")
+        print(f"best reward: {best_r}")
+        print(f"epsilon: {epsilon}\n")
 
+        # get Q-table for experience
+        states, actions, q_values = [], [], []
         mute()
-        states, actions, labels = [], [], []
-        for state, a, r, state_new in examples:
-            states.append(np.array(state))
+        for s0, a, r, s1 in examples:
+            states.append(np.array(s0))
 
             action_onehot = np.zeros(5)
             action_onehot[a] = 1
             actions.append(action_onehot)
 
-            if state_new is None:  # Terminal state
-                q_new = 0
+            if s1 is None:  # terminal state
+                q1 = 0
             else:
-                _, q_new = dqn.get_action(state_new)
-            labels.append(np.array(r + gamma * q_new))
+                _, q1 = dqn.get_action(s1)
+            q_values.append(np.array(r + gamma * q1))
         unmute()
 
-        hist = dqn.model.fit(  # type: ignore
+        # fit the model on experience and q values
+        dqn.model.fit(  # type: ignore
             [np.array(states), np.array(actions)],
-            np.array(labels),
+            np.array(q_values),
             batch_size=50,
             epochs=10,
             verbose=2,  # type: ignore
@@ -237,4 +265,4 @@ dqn = DQN()
 # dqn.model.summary()
 
 # %%
-train(env, dqn, epsilon=0.2, checkpoint=0)
+train(env, dqn, epsilon=1, loadcp=0)
