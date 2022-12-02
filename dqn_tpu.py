@@ -76,7 +76,6 @@ class DQN:
         #model.compile(loss="mse")
         return model
 
-    @tf.function()
     def get_action(self, state):
         states = []
         actions = []
