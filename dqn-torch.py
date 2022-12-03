@@ -160,7 +160,7 @@ class RacingAgent:
         gamma=0.95,  # discount rate
         epsilon=1.0,  # random action rate
         epsilon_min=0.1,
-        epsilon_decay=0.995,
+        epsilon_decay=0.9995,
         learning_rate=0.001,
         tau=1e-3,  # soft update discount
         update_interval=5,
@@ -251,13 +251,11 @@ class RacingAgent:
 
         states, actions, rewards, next_states, dones = batch
 
-        q_targets_next = self.dqn_target(next_states).detach().max(1)[0].unsqueeze(1)
-        q_targets = rewards + self.gamma * q_targets_next * (1 - dones)
-        # 64x64
+        q_targets_next = self.dqn_target(next_states).detach().max(1)[0]
+        q_targets = (rewards + self.gamma * q_targets_next * (1 - dones)).unsqueeze(1)
 
         q_preds = self.dqn_behavior(states)
         q_preds = q_preds.gather(1, actions.unsqueeze(1))
-        # 64x1
 
         # fit behavior dqn
         self.dqn_behavior.train()
@@ -273,11 +271,25 @@ class RacingAgent:
             self.epsilon *= self.epsilon_decay
 
     def load(self, fp):
-        self.dqn_behavior = torch.load(fp)
-        self.update_target()
+        checkpoint = torch.load(fp)
+        self.dqn_behavior.load_state_dict(checkpoint["model_state"])
+        self.dqn_target.load_state_dict(checkpoint["model_state"])
+        self.optimizer.load_state_dict(checkpoint["optimizer"])
 
-    def save(self, fp):
-        torch.save(self.dqn_target, fp)
+    def save(self, epoch, steps, reward, epsilon):
+        print(f"saving model after epoch {epoch}")
+        with open("torch-hist.txt", "a") as f:
+            f.write(
+                f"epoch: {epoch}, steps: {steps}, reward: {reward}, epsilon: {epsilon}\n"
+            )
+
+        torch.save(
+            {
+                "model_state": self.dqn_target.state_dict(),
+                "optimizer": self.optimizer.state_dict(),
+            },
+            f"models/dqn-torch-{epoch}.pth",
+        )
 
     def train(self, env: gym.Env, start_ep: int, end_ep: int, max_neg=25):
         print(f"Starting training from ep {start_ep} to {end_ep}...")
@@ -335,7 +347,7 @@ class RacingAgent:
                 t += 1
 
             if ep % self.save_freq == 0:
-                self.save(f"models/dqn2-{ep}.hd5")
+                self.save(ep, t, total_reward, epsilon)
 
 
 def get_args():
@@ -364,6 +376,10 @@ def get_args():
     )
 
     args = parser.parse_args()
+
+    if args.model:
+        print("loading a model, make sure start and epsilon are set correctly")
+
     return args.model, args.start, args.end, args.epsilon
 
 
@@ -390,7 +406,7 @@ if __name__ == "__main__":
         gamma=0.95,  # discount rate
         epsilon=epsilon,  # random action rate
         epsilon_min=0.1,
-        epsilon_decay=0.995,
+        epsilon_decay=0.9995,
         learning_rate=0.001,
         tau=1e-3,  # soft update discount
         update_interval=5,
