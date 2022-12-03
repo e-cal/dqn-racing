@@ -1,4 +1,3 @@
-# %%
 import copy
 import os
 import random
@@ -24,7 +23,6 @@ def unmute():
     sys.stdout = stdout
 
 
-# %%
 class SoftMax(layers.Layer):
     def __init__(self, **kwargs):
         self.filter_shape = None
@@ -84,11 +82,10 @@ class DQN:
         return optimal_action, q_values[optimal_action][0]
 
 
-# %%
 dqn = DQN()
 dqn.model.summary()
 
-# %%
+
 def join_frames(o0, o1, o2):
     gray_image0 = cv2.cvtColor(cv2.resize(o0, (48, 48)), cv2.COLOR_RGB2GRAY)  # type: ignore
     gray_image1 = cv2.cvtColor(cv2.resize(o1, (48, 48)), cv2.COLOR_RGB2GRAY)  # type: ignore
@@ -99,7 +96,6 @@ def join_frames(o0, o1, o2):
     ).transpose()
 
 
-# %%
 def run_episode(env: gym.Env, dqn: DQN, epsilon: float):
     """Reset the environment and run through an episode using the DQN."""
 
@@ -138,7 +134,7 @@ def run_episode(env: gym.Env, dqn: DQN, epsilon: float):
             episode.append((join_frames(ob0, ob1, ob2), a, r, None))
             break
 
-        # stop if reward negative [maybe move up?]
+        # stop if reward negative
         if reward < 0:
             done = True
 
@@ -149,7 +145,6 @@ def run_episode(env: gym.Env, dqn: DQN, epsilon: float):
     return episode, reward
 
 
-# %%
 def train(
     env: gym.Env,
     dqn: DQN,
@@ -165,7 +160,7 @@ def train(
     if loadcp > 0:  # load partially trained model
         fp = f"dqn-{loadcp}.hd5"
         print(f"loaded model {fp}")
-        dqn.model = models.load_model(fp)  # type: ignore
+        dqn.model = models.load_model(fp, custom_objects={"SoftMax": SoftMax})  # type: ignore
 
     experience = []
     best_episodes = []
@@ -186,7 +181,9 @@ def train(
             episode, reward = run_episode(env, dqn, epsilon=0)
 
             with open("training-history.txt", "a") as f:
-                f.write(f"[ep {i}] length: {len(episode)}, reward: {reward}")
+                f.write(
+                    f"iterations: {i}, length: {len(episode)}, epsilon: {epsilon}, reward: {reward}\n"
+                )
 
             fp = f"dqn-{i}.hd5"
             dqn.model.save(fp, save_format="h5")  # type: ignore
@@ -214,7 +211,7 @@ def train(
             experience = experience[-999 * 5 :]
 
         # decay epsilon
-        epsilon = max(epsilon * ep_decay, min_ep)
+        epsilon = (epsilon - 0.2) * 0.99 + 0.2
 
         print("\nFitting model...")
 
@@ -231,6 +228,8 @@ def train(
         print(f"training examples: {len(examples)}")
         print(f"best reward: {best_r}")
         print(f"epsilon: {epsilon}\n")
+
+        print(f"len experience: {len(experience)}")
 
         # get Q-table for experience
         states, actions, q_values = [], [], []
@@ -259,10 +258,9 @@ def train(
         )
 
 
-# %%
-env = gym.make("CarRacing-v2", continuous=False, render_mode="rgb_array")
-dqn = DQN()
-# dqn.model.summary()
+if __name__ == "__main__":
+    env = gym.make("CarRacing-v2", continuous=False, render_mode="rgb_array")
+    dqn = DQN()
+    # dqn.model.summary()
 
-# %%
-train(env, dqn, epsilon=1, loadcp=0)
+    train(env, dqn, epsilon=1.0)

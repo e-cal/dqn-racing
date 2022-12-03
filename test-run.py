@@ -1,18 +1,18 @@
-import gym
 import math
 import random
-import numpy as np
+from collections import deque, namedtuple
+from itertools import count
+
+import gym
 import matplotlib
 import matplotlib.pyplot as plt
-from collections import namedtuple, deque
-from itertools import count
-from PIL import Image
-
+import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
+import torch.optim as optim
 import torchvision.transforms as T
+from PIL import Image
 
 
 def policy(observation):
@@ -26,5 +26,6 @@ for _ in range(1000):
     observation, reward, terminated, truncated, info = env.step(action)
 
     if terminated or truncated:
+        print("terminated")
         observation, info = env.reset()
 env.close()
