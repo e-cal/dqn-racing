@@ -12,11 +12,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from gym.wrappers.monitoring import video_recorder
-from IPython import display
-from IPython.display import HTML
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+NAME = "bonus"
+SAVE_FREQ = 100
 
 
 def process_state(state):
@@ -24,14 +24,6 @@ def process_state(state):
     state = state.astype(float)
     state /= 255.0
     return state
-
-
-def get_states(deque):
-    """Get transposed state frames from queue"""
-    frame_stack = np.array(deque)
-    # Move stack dimension to the channel dimension (stack, x, y) -> (x, y, stack)
-    # return np.transpose(frame_stack, (1, 2, 0))
-    return frame_stack
 
 
 class DQN(nn.Module):
@@ -203,14 +195,6 @@ class RacingAgent:
     def act(self, state):
         # Epsilon-greedy action selection
         if np.random.rand() > self.epsilon:
-            # state = np.expand_dims(state, axis=0)
-            # state = torch.from_numpy(state).float().unsqueeze(0).to(device)
-
-            # self.dqn_behavior.eval()
-            # with torch.no_grad():
-            #     action_values = self.dqn_behavior(state)
-            # self.dqn_behavior.train()
-
             action_values = self.dqn_behavior.predict(state)
             aind = np.argmax(action_values.cpu().data.numpy())
 
@@ -221,7 +205,7 @@ class RacingAgent:
 
     def update_target(self):
         """Soft update model parameters.
-        θ_target = τ*θ_local + (1 - τ)*θ_target
+        θ_target = τ*θ_local + (1-τ)*θ_target
         """
         for target_param, local_param in zip(
             self.dqn_target.parameters(), self.dqn_behavior.parameters()
@@ -231,26 +215,9 @@ class RacingAgent:
             )
 
     def learn(self):
-        batch = self.memory.sample()
+        states, actions, rewards, next_states, dones = self.memory.sample()
 
-        """
-        q_preds = []
-        q_targets = []
-
-        for state, action, reward, next_state, done in batch:
-            q = self.dqn_behavior.predict(state)
-            q_preds.append(q.clone())
-            if done:
-                q[action] = reward
-            else:
-                next_q = self.dqn_target.predict(next_state)
-                q[0, action] = reward + self.gamma * torch.max(next_q)
-
-            q_targets.append(q)
-        """
-
-        states, actions, rewards, next_states, dones = batch
-
+        # get Q tables from both networks
         q_targets_next = self.dqn_target(next_states).detach().max(1)[0]
         q_targets = (rewards + self.gamma * q_targets_next * (1 - dones)).unsqueeze(1)
 
@@ -267,6 +234,7 @@ class RacingAgent:
         # soft update target dqn
         self.update_target()
 
+        # decay epsilon
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
@@ -288,7 +256,7 @@ class RacingAgent:
                 "model_state": self.dqn_target.state_dict(),
                 "optimizer": self.optimizer.state_dict(),
             },
-            f"models/dqn-torch-{epoch}.pth",
+            f"models/{NAME}-{epoch}.pth",
         )
 
     def train(self, env: gym.Env, start_ep: int, end_ep: int, max_neg=25):
@@ -304,7 +272,7 @@ class RacingAgent:
             done = False
 
             while True:
-                state_stack = get_states(state_queue)
+                state_stack = np.array(state_queue)
                 action = self.act(state_stack)
 
                 reward = 0
@@ -318,14 +286,14 @@ class RacingAgent:
                 n_rewards = n_rewards + 1 if t > 100 and reward < 0 else 0
 
                 # extra reward for gassing it
-                # if action[1] == 1 and action[2] == 0:
-                #     reward *= 1.5
+                if action[1] == 1 and action[2] == 0:
+                    reward *= 1.5
 
                 total_reward += reward
 
                 next_state = process_state(next_state)  # type: ignore
                 state_queue.append(next_state)
-                next_state_stack = get_states(state_queue)
+                next_state_stack = np.array(state_queue)
 
                 self.memory.add(
                     state_stack,
@@ -413,7 +381,7 @@ if __name__ == "__main__":
         act_interval=2,
         buffer_size=5000,
         batch_size=64,
-        save_freq=25,
+        save_freq=SAVE_FREQ,
         seed=420,
     )
 

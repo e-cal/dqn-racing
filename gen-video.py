@@ -27,8 +27,8 @@ if __name__ == "__main__":
     t = 1
     done = False
 
-    while t < 1000:
-        state_stack = get_states(state_queue)
+    while t < 5000:
+        state_stack = np.array(state_queue)
         action = agent.act(state_stack)
         next_state, reward, done, _, _ = env.step(action)
 
