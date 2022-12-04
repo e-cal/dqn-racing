@@ -160,7 +160,7 @@ class RacingAgent:
         gamma=0.95,  # discount rate
         epsilon=1.0,  # random action rate
         epsilon_min=0.1,
-        epsilon_decay=0.9995,
+        epsilon_decay=0.9999,
         learning_rate=0.001,
         tau=1e-3,  # soft update discount
         update_interval=5,
@@ -318,8 +318,8 @@ class RacingAgent:
                 n_rewards = n_rewards + 1 if t > 100 and reward < 0 else 0
 
                 # extra reward for gassing it
-                if action[1] == 1 and action[2] == 0:
-                    reward *= 1.5
+                # if action[1] == 1 and action[2] == 0:
+                #     reward *= 1.5
 
                 total_reward += reward
 
@@ -384,7 +384,7 @@ def get_args():
 
 
 if __name__ == "__main__":
-    model, start, end, epsilon = get_args()
+    model_path, start, end, epsilon = get_args()
 
     env = gym.make("CarRacing-v2")
     agent = RacingAgent(
@@ -417,8 +417,8 @@ if __name__ == "__main__":
         seed=420,
     )
 
-    if model:
-        agent.load(model)
+    if model_path:
+        agent.load(model_path)
 
     agent.train(env, start, end)
 
