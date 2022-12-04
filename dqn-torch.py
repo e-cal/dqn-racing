@@ -406,7 +406,7 @@ if __name__ == "__main__":
         gamma=0.95,  # discount rate
         epsilon=epsilon,  # random action rate
         epsilon_min=0.1,
-        epsilon_decay=0.9995,
+        epsilon_decay=0.9999,
         learning_rate=0.001,
         tau=1e-3,  # soft update discount
         update_interval=5,
