@@ -73,7 +73,8 @@ class DQN(nn.Module):
         gas = torch.sigmoid(gas)  # [0,1]
         brake = torch.sigmoid(brake)  # [0,1]
 
-        return torch.cat((dir, gas, brake))
+        out = torch.cat((dir.unsqueeze(1), gas.unsqueeze(1), brake.unsqueeze(1)), dim=1)
+        return out
 
     def predict(self, state):
         state = torch.from_numpy(state).float().unsqueeze(0).to(device)
@@ -205,11 +206,10 @@ class RacingAgent:
         states, actions, rewards, next_states, dones = self.memory.sample()
 
         # get Q tables from both networks
-        q_targets_next = self.dqn_target(next_states).detach()  # .max(1)[0]
-        q_targets = rewards + self.gamma * q_targets_next * (1 - dones)  # .unsqueeze(1)
+        q_targets_next = self.dqn_target(next_states).detach()
+        q_targets = (rewards + self.gamma * q_targets_next.t() * (1 - dones)).t()
 
         q_preds = self.dqn_behavior(states)
-        # q_preds = q_preds.gather(1, actions.unsqueeze(1))
 
         # fit behavior dqn
         self.dqn_behavior.train()
