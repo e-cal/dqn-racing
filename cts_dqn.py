@@ -15,7 +15,8 @@ import torch.optim as optim
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-NAME = "bonus"
+NAME = "cts-mod"
+SAVE_FREQ = 100
 
 
 def process_state(state):
@@ -187,7 +188,7 @@ class RacingAgent:
             action_values = self.dqn_behavior.predict(state)
             a = action_values.cpu().data.numpy()
         else:
-            a = random.uniform(-1, 1), random.uniform(0, 1), random.uniform(0, 1)
+            a = random.uniform(-1, 1), random.uniform(0.1, 1), random.uniform(0, 0.3)
 
         return tuple(a)
 
@@ -232,7 +233,7 @@ class RacingAgent:
         self.optimizer.load_state_dict(checkpoint["optimizer"])
 
     def save(self, epoch, steps, reward, epsilon):
-        print(f"saving model after epoch {epoch}")
+        print(f"saving model to models/{NAME}-{epoch}.pth")
         with open("torch-hist.txt", "a") as f:
             f.write(
                 f"epoch: {epoch}, steps: {steps}, reward: {reward}, epsilon: {epsilon}\n"
@@ -272,9 +273,9 @@ class RacingAgent:
                 # end episode if continually getting negative reward
                 n_rewards = n_rewards + 1 if t > 100 and reward < 0 else 0
 
-                # extra reward for gassing it
-                # if action[1] == 1 and action[2] == 0:
-                #     reward *= 1.5
+                if action[1] > 0.5:
+                    reward += 0.11 - action[2]
+                    reward *= 1.5
 
                 total_reward += reward
 
@@ -353,7 +354,7 @@ if __name__ == "__main__":
         act_interval=2,
         buffer_size=5000,
         batch_size=64,
-        save_freq=200,
+        save_freq=SAVE_FREQ,
         seed=420,
     )
 

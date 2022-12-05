@@ -245,7 +245,7 @@ class RacingAgent:
         self.optimizer.load_state_dict(checkpoint["optimizer"])
 
     def save(self, epoch, steps, reward, epsilon):
-        print(f"saving model after epoch {epoch}")
+        print(f"saving model to models/{NAME}-{epoch}.pth")
         with open("torch-hist.txt", "a") as f:
             f.write(
                 f"epoch: {epoch}, steps: {steps}, reward: {reward}, epsilon: {epsilon}\n"
