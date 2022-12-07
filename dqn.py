@@ -1,3 +1,4 @@
+import os
 import random
 from collections import deque, namedtuple
 
@@ -244,7 +245,14 @@ class RacingAgent:
 
     def save(self, epoch, steps, reward, epsilon, loss):
         print(f"saving model to models/{NAME}-{epoch}.pth")
-        with open(f"{NAME}-hist.csv", "a") as f:
+
+        fp = f"{NAME}-hist.csv"
+
+        if not os.path.exists(fp):
+            with open(fp, "w") as f:
+                f.write(f"epoch,epsilon,steps,reward,loss\n")
+
+        with open(fp, "a") as f:
             f.write(f"{epoch},{epsilon},{steps},{reward},{loss}\n")
 
         torch.save(
