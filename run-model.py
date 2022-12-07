@@ -1,14 +1,20 @@
+import argparse
 from collections import deque
 
 import gym
 
-from torch_dqn import *
+from mod_disc_dqn import *
 
 if __name__ == "__main__":
     env = gym.make("CarRacing-v2", render_mode="human")
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--model", required=True, help="Path to trained model")
+    args = parser.parse_args()
+    model_path = args.model
+
     agent = RacingAgent(epsilon=0)
-    agent.load("models/dqn-torch-950.pth")
+    agent.load(model_path)
 
     for ep in range(3):
         state, _ = env.reset()
@@ -20,7 +26,7 @@ if __name__ == "__main__":
         done = False
 
         while True:
-            state_stack = get_states(state_queue)
+            state_stack = np.array(state_queue)
             action = agent.act(state_stack)
             next_state, reward, done, _, _ = env.step(action)
 

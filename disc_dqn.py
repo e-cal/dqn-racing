@@ -1,12 +1,8 @@
-import base64
-import glob
-import io
 import random
 from collections import deque, namedtuple
 
 import cv2
 import gym
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
@@ -92,7 +88,7 @@ class ReplayBuffer:
         )
         self.seed = random.seed(seed)
 
-    def add(self, state, action, reward, next_state, done):
+    def add(self, state, action, rewardpcsc_scan, next_state, done):
         e = self.experience(state, action, reward, next_state, done)
         self.memory.append(e)
 

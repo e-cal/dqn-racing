@@ -5,7 +5,7 @@ from collections import deque
 import gym
 from gym.utils.save_video import save_video
 
-from torch_dqn import *
+from cts_dqn import *
 
 if __name__ == "__main__":
     env = gym.make("CarRacing-v2", render_mode="rgb_array_list")
