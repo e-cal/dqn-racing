@@ -5,7 +5,7 @@ from collections import deque
 import gym
 from gym.utils.save_video import save_video
 
-from cts_dqn import *
+from mod_disc_dqn import *
 
 if __name__ == "__main__":
     env = gym.make("CarRacing-v2", render_mode="rgb_array_list")
@@ -44,3 +44,4 @@ if __name__ == "__main__":
         t += 1
 
     save_video(env.render(), "videos", fps=env.metadata["render_fps"])
+    os.rename("videos/rl-video-episode-0.mp4", f"videos/{model_name}.mp4")
