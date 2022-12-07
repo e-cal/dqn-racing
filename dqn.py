@@ -89,7 +89,7 @@ class ReplayBuffer:
         )
         self.seed = random.seed(seed)
 
-    def add(self, state, action, rewardpcsc_scan, next_state, done):
+    def add(self, state, action, reward, next_state, done):
         e = self.experience(state, action, reward, next_state, done)
         self.memory.append(e)
 
