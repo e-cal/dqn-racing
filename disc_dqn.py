@@ -281,10 +281,6 @@ class RacingAgent:
                 # end episode if continually getting negative reward
                 n_rewards = n_rewards + 1 if t > 100 and reward < 0 else 0
 
-                # extra reward for gassing it
-                if action[1] == 1 and action[2] == 0:
-                    reward *= 1.5
-
                 total_reward += reward
 
                 next_state = process_state(next_state)  # type: ignore
