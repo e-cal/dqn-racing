@@ -12,8 +12,8 @@ import torch.optim as optim
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-NAME = "bonus"
-SAVE_FREQ = 100
+NAME = "vanilla"
+SAVE_FREQ = 25
 
 
 def process_state(state):
