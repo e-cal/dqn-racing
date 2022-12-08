@@ -12,9 +12,8 @@ import torch.optim as optim
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-NAME = "vanilla"
+NAME = "vanilla-update-every-4-steps"
 SAVE_FREQ = 25
-
 
 def process_state(state):
     state = cv2.cvtColor(state, cv2.COLOR_BGR2GRAY)  # type: ignore
@@ -152,7 +151,9 @@ class RacingAgent:
         epsilon_decay=0.9999,
         learning_rate=0.001,
         tau=1e-3,  # soft update discount
-        update_interval=5,
+        update_main_network_freq=1,
+        hard_update=False,
+        dqn_loss="mse"
         act_interval=2,
         buffer_size=5000,
         batch_size=64,
@@ -167,6 +168,9 @@ class RacingAgent:
         self.epsilon_decay = epsilon_decay
         self.learning_rate = learning_rate
         self.tau = tau
+        self.update_main_network_freq = update_main_network_freq
+        self.hard_update = hard_update
+        self.dqn_loss = dqn_loss
 
         self.seed = seed if seed is not None else np.random.randint(1000)
         random.seed(self.seed)
@@ -188,6 +192,7 @@ class RacingAgent:
         self.act_interval = act_interval
         self.update_interval = update_interval
         self.save_freq = save_freq
+        self.training_steps = 0
 
     def act(self, state):
         # Epsilon-greedy action selection
@@ -200,7 +205,7 @@ class RacingAgent:
 
         return self.actions[aind]
 
-    def update_target(self):
+    def soft_update_target(self):
         """Soft update model parameters.
         θ_target = τ*θ_local + (1-τ)*θ_target
         """
@@ -211,26 +216,44 @@ class RacingAgent:
                 self.tau * local_param.data + (1.0 - self.tau) * target_param.data
             )
 
+    def hard_update_target(self):
+        """Hard update model parameters."""
+        for target_param, local_param in zip(
+            self.dqn_target.parameters(), self.dqn_behavior.parameters()
+        ):
+            target_param.data.copy_(
+                local_param.data
+            )        
+
     def learn(self):
         states, actions, rewards, next_states, dones = self.memory.sample()
-
+    
         # get Q tables from both networks
         q_targets_next = self.dqn_target(next_states).detach().max(1)[0]
         q_targets = (rewards + self.gamma * q_targets_next * (1 - dones)).unsqueeze(1)
 
         q_preds = self.dqn_behavior(states)
         q_preds = q_preds.gather(1, actions.unsqueeze(1))
-
+        
         # fit behavior dqn
         self.dqn_behavior.train()
         self.optimizer.zero_grad()
-        loss = F.mse_loss(q_preds, q_targets)
+        if self.dqn_loss == "mse":
+            loss = F.mse_loss(q_preds, q_targets)
+        elif self.dqn_loss == "huber":
+            loss = F.huber_loss(q_preds, q_targets)
         loss.backward()
-        self.optimizer.step()
-
-        # soft update target dqn
-        self.update_target()
-
+        self.training_steps += 1
+        
+        # Frequency at which main network weights should be updated
+        if (self.training_steps % self.update_main_network_freq == 0):
+            self.optimizer.step()
+        
+        if not self.hard_update:
+            self.soft_update_target()
+        else:
+            self.hard_update_target()
+        
         # decay epsilon
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
@@ -377,7 +400,9 @@ if __name__ == "__main__":
         epsilon_decay=0.9999,
         learning_rate=0.001,
         tau=1e-3,  # soft update discount
-        update_interval=5,
+        update_main_network_freq=1,
+        hard_update=False,
+        dqn_loss="mse"
         act_interval=2,
         buffer_size=5000,
         batch_size=64,
