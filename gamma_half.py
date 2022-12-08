@@ -12,8 +12,23 @@ import torch.optim as optim
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-NAME = "vanilla"
+NAME = "gamma-half"
 SAVE_FREQ = 25
+ACTIONS = [
+    # (steer [-1,1], gas [0,1], break [0,1])
+    (-1, 1, 0.2),
+    (0, 1, 0.2),
+    (1, 1, 0.2),
+    (-1, 1, 0),
+    (0, 1, 0),
+    (1, 1, 0),
+    (-1, 0, 0.2),
+    (0, 0, 0.2),
+    (1, 0, 0.2),
+    (-1, 0, 0),
+    (0, 0, 0),
+    (1, 0, 0),
+]
 
 
 def process_state(state):
@@ -131,21 +146,7 @@ class ReplayBuffer:
 class RacingAgent:
     def __init__(
         self,
-        actions=[
-            # (steer [-1,1], gas [0,1], break [0,1])
-            (-1, 1, 0.2),
-            (0, 1, 0.2),
-            (1, 1, 0.2),
-            (-1, 1, 0),
-            (0, 1, 0),
-            (1, 1, 0),
-            (-1, 0, 0.2),
-            (0, 0, 0.2),
-            (1, 0, 0.2),
-            (-1, 0, 0),
-            (0, 0, 0),
-            (1, 0, 0),
-        ],
+        actions=ACTIONS,
         gamma=0.5,  # discount rate
         epsilon=1.0,  # random action rate
         epsilon_min=0.1,
@@ -334,7 +335,7 @@ def get_args():
         default=1,
         help="starting episode (to continue training from)",
     )
-    parser.add_argument("-x", "--end", type=int, default=1000, help="ending episode")
+    parser.add_argument("-x", "--end", type=int, default=500, help="ending episode")
     parser.add_argument(
         "-e",
         "--epsilon",
@@ -356,21 +357,7 @@ if __name__ == "__main__":
 
     env = gym.make("CarRacing-v2")
     agent = RacingAgent(
-        actions=[
-            # (steer [-1,1], gas [0,1], break [0,1])
-            (-1, 1, 0.2),
-            (0, 1, 0.2),
-            (1, 1, 0.2),
-            (-1, 1, 0),
-            (0, 1, 0),
-            (1, 1, 0),
-            (-1, 0, 0.2),
-            (0, 0, 0.2),
-            (1, 0, 0.2),
-            (-1, 0, 0),
-            (0, 0, 0),
-            (1, 0, 0),
-        ],
+        actions=ACTIONS,
         gamma=0.5,  # discount rate
         epsilon=epsilon,  # random action rate
         epsilon_min=0.1,

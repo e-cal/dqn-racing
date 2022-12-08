@@ -12,8 +12,23 @@ import torch.optim as optim
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-NAME = "vanilla"
+NAME = "gamma1"
 SAVE_FREQ = 25
+ACTIONS = [
+    # (steer [-1,1], gas [0,1], break [0,1])
+    (-1, 1, 0.2),
+    (0, 1, 0.2),
+    (1, 1, 0.2),
+    (-1, 1, 0),
+    (0, 1, 0),
+    (1, 1, 0),
+    (-1, 0, 0.2),
+    (0, 0, 0.2),
+    (1, 0, 0.2),
+    (-1, 0, 0),
+    (0, 0, 0),
+    (1, 0, 0),
+]
 
 
 def process_state(state):
@@ -131,21 +146,7 @@ class ReplayBuffer:
 class RacingAgent:
     def __init__(
         self,
-        actions=[
-            # (steer [-1,1], gas [0,1], break [0,1])
-            (-1, 1, 0.2),
-            (0, 1, 0.2),
-            (1, 1, 0.2),
-            (-1, 1, 0),
-            (0, 1, 0),
-            (1, 1, 0),
-            (-1, 0, 0.2),
-            (0, 0, 0.2),
-            (1, 0, 0.2),
-            (-1, 0, 0),
-            (0, 0, 0),
-            (1, 0, 0),
-        ],
+        actions=ACTIONS,
         gamma=1,  # discount rate
         epsilon=1.0,  # random action rate
         epsilon_min=0.1,
@@ -356,21 +357,7 @@ if __name__ == "__main__":
 
     env = gym.make("CarRacing-v2")
     agent = RacingAgent(
-        actions=[
-            # (steer [-1,1], gas [0,1], break [0,1])
-            (-1, 1, 0.2),
-            (0, 1, 0.2),
-            (1, 1, 0.2),
-            (-1, 1, 0),
-            (0, 1, 0),
-            (1, 1, 0),
-            (-1, 0, 0.2),
-            (0, 0, 0.2),
-            (1, 0, 0.2),
-            (-1, 0, 0),
-            (0, 0, 0),
-            (1, 0, 0),
-        ],
+        actions=ACTIONS,
         gamma=1,  # discount rate
         epsilon=epsilon,  # random action rate
         epsilon_min=0.1,

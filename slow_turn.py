@@ -1,3 +1,4 @@
+import os
 import random
 from collections import deque, namedtuple
 
@@ -11,8 +12,19 @@ import torch.optim as optim
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-NAME = "bal"
-SAVE_FREQ = 100
+NAME = "slow-turn"
+SAVE_FREQ = 25
+ACTIONS = [
+    (0, 0.25, 0),
+    (0, 0.5, 0),
+    (0, 1, 0),
+    (-1, 0, 0.2),
+    (0, 0, 0.2),
+    (1, 0, 0.2),
+    (-1, 0, 0),
+    (0, 0, 0),
+    (1, 0, 0),
+]
 
 
 def process_state(state):
@@ -130,24 +142,7 @@ class ReplayBuffer:
 class RacingAgent:
     def __init__(
         self,
-        actions=[
-            # (steer [-1,1], gas [0,1], break [0,1])
-            (-1, 0.25, 0),
-            (0, 0.25, 0),
-            (1, 0.25, 0),
-            (-1, 0.5, 0),
-            (0, 0.5, 0),
-            (1, 0.5, 0),
-            (-1, 1, 0),
-            (0, 1, 0),
-            (1, 1, 0),
-            (-1, 0, 0.2),
-            (0, 0, 0.2),
-            (1, 0, 0.2),
-            (-1, 0, 0),
-            (0, 0, 0),
-            (1, 0, 0),
-        ],
+        actions=ACTIONS,
         gamma=0.95,  # discount rate
         epsilon=1.0,  # random action rate
         epsilon_min=0.1,
@@ -237,18 +232,25 @@ class RacingAgent:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
+        return loss.item()
+
     def load(self, fp):
         checkpoint = torch.load(fp)
         self.dqn_behavior.load_state_dict(checkpoint["model_state"])
         self.dqn_target.load_state_dict(checkpoint["model_state"])
         self.optimizer.load_state_dict(checkpoint["optimizer"])
 
-    def save(self, epoch, steps, reward, epsilon):
+    def save(self, epoch, steps, reward, epsilon, loss):
         print(f"saving model to models/{NAME}-{epoch}.pth")
-        with open("torch-hist.txt", "a") as f:
-            f.write(
-                f"epoch: {epoch}, steps: {steps}, reward: {reward}, epsilon: {epsilon:.4f}\n"
-            )
+
+        fp = f"{NAME}-hist.csv"
+
+        if not os.path.exists(fp):
+            with open(fp, "w") as f:
+                f.write(f"epoch,epsilon,steps,reward,loss\n")
+
+        with open(fp, "a") as f:
+            f.write(f"{epoch},{epsilon},{steps},{reward},{loss}\n")
 
         torch.save(
             {
@@ -284,10 +286,6 @@ class RacingAgent:
                 # end episode if continually getting negative reward
                 n_rewards = n_rewards + 1 if t > 100 and reward < 0 else 0
 
-                # extra reward for gassing it
-                if action[1] == 1 and action[2] == 0:
-                    reward *= 1.5
-
                 total_reward += reward
 
                 next_state = process_state(next_state)  # type: ignore
@@ -309,12 +307,12 @@ class RacingAgent:
                     break
 
                 if len(self.memory) > self.batch_size:
-                    self.learn()
+                    loss = self.learn()
 
                 t += 1
 
             if ep % self.save_freq == 0:
-                self.save(ep, t, total_reward, self.epsilon)
+                self.save(ep, t, total_reward, self.epsilon, loss)
 
 
 def get_args():
@@ -355,24 +353,7 @@ if __name__ == "__main__":
 
     env = gym.make("CarRacing-v2")
     agent = RacingAgent(
-        actions=[
-            # (steer [-1,1], gas [0,1], break [0,1])
-            (-1, 0, 0.5),
-            (0, 0, 0.5),
-            (1, 0, 0.5),
-            (-1, 0.5, 0),
-            (0, 0.5, 0),
-            (1, 0.5, 0),
-            (-1, 1, 0),
-            (0, 1, 0),
-            (1, 1, 0),
-            (-1, 0, 0.2),
-            (0, 0, 0.2),
-            (1, 0, 0.2),
-            (-1, 0, 0),
-            (0, 0, 0),
-            (1, 0, 0),
-        ],
+        actions=ACTIONS,
         gamma=0.95,  # discount rate
         epsilon=epsilon,  # random action rate
         epsilon_min=0.1,

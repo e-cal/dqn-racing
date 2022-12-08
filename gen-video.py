@@ -5,7 +5,7 @@ from collections import deque
 import gym
 from gym.utils.save_video import save_video
 
-from dqn import *
+from score_decay import *
 
 NVIDS = 3
 
@@ -37,12 +37,15 @@ if __name__ == "__main__":
 
             n_rewards = n_rewards + 1 if t > 1000 and reward < 0 else 0
 
+            if n_rewards >= 100:
+                reward *= 10
+
             total_reward += reward
 
             next_state = process_state(next_state)  # type: ignore
             state_queue.append(next_state)
 
-            if done or total_reward < 0 or n_rewards > 100:
+            if done or total_reward < 0:
                 print(f"length: {t}, total reward: {total_reward:.2f}")
                 break
 
